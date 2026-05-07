@@ -6,11 +6,14 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import se.lexicon.springai_exercises.dto.ApplicationParameters;
 import se.lexicon.springai_exercises.dto.MeetingNotes;
+import se.lexicon.springai_exercises.dto.WeeklyReportInputs;
+import se.lexicon.springai_exercises.dto.WeeklyReportResponse;
 
 @Service
 public class OpenAIServiceImpl implements OpenAIService {
@@ -152,5 +155,66 @@ public class OpenAIServiceImpl implements OpenAIService {
         return (content != null && !content.isBlank())
                 ? content
                 : "Sorry, I couldn't generate the action items at the moment.";
+    }
+
+    @Override
+    public WeeklyReportResponse generateWeeklyReportJson(WeeklyReportInputs inputs) {
+
+        if (inputs == null) {
+            throw new IllegalArgumentException("Input cannot be null");
+        }
+
+        BeanOutputConverter<WeeklyReportResponse> converter = new BeanOutputConverter<>(WeeklyReportResponse.class);
+
+        String format = converter.getFormat();
+
+        ChatResponse response = chatClient.prompt()
+                .system("""
+                        You are one of the team members.
+                        
+                        Your role:
+                        - To write a weekly activity report
+                        - Always be clear, concise, and structured
+                        
+                        Guidelines:
+                        - Highlight important points and actions
+                        - Professional tone and Structures the output
+                        - Identify blockers and highlight the risks
+                        - Use bullet points or sections
+                        
+                        Format the output as a JSON object that matches this schema:
+                        """ + format)
+                .user(String.format("""
+                            Create a Weekly Report for the manager:
+                            
+                            Input1: %s
+                            Input2: %s
+                            Input3: %s
+                            
+                            Include:
+                            1. Summarizes each team member
+                            2. Identifies blockers
+                            3. Highlights risks
+                            4. The report includes Completed tasks, Blockers, Time spent, and Notes (often inconsistent)
+                            """,
+                        inputs.input1(),
+                        inputs.input2(),
+                        inputs.input3()))
+                .options(ChatOptions.builder()
+                        .model("gpt-4o")
+                        .maxTokens(1400)
+                        .temperature(0.2))
+                .call()
+                .chatResponse();
+
+        String content = (response != null && response.getResult() != null)
+                ? response.getResult().getOutput().getText()
+                : null;
+
+        if (content == null && content.isBlank()) {
+            throw new IllegalArgumentException("No content found in the response");
+        }
+
+        return converter.convert(content);
     }
 }
