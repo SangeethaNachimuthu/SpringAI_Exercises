@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import se.lexicon.springai_exercises.dto.ApplicationParameters;
+import se.lexicon.springai_exercises.dto.MeetingNotes;
 import se.lexicon.springai_exercises.service.OpenAIService;
 
 @RestController
@@ -25,5 +26,11 @@ public class OpenAIController {
     public String generateApplicationStatus(@RequestBody @Validated ApplicationParameters params) {
 
         return service.generateApplicationStatus(params);
+    }
+
+    @PostMapping("/notes")
+    public String generateMeetingNotes(@RequestBody @Validated MeetingNotes input) {
+
+        return service.generateMeetingNotes(input);
     }
 }
